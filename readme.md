@@ -4,9 +4,10 @@ A small web tool that audits any URL — HTTP status, response time, page title,
 
 Built for the Digital Heroes SDE internship qualification task ([digitalheroesco.com](https://digitalheroesco.com)).
 
-**Live demo:** _add your deployed URL here_
-**Repo:** _add your GitHub repo link here_
+**Live demo:** 
+https://page-pulse-p0lc.onrender.com
 
+**Repo:** https://github.com/naina0108/page_pulse_SD
 ---
 
 ## Setup
