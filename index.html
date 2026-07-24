@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Page Pulse — URL Audit Tool</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --panel: #131722;
+    --panel-2: #171c29;
+    --border: #232a3b;
+    --text: #e7e9ee;
+    --muted: #8992a6;
+    --accent: #6c8cff;
+    --accent-2: #7ef0c0;
+    --danger: #ff6b6b;
+    --warn: #ffb454;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+    background: radial-gradient(circle at 20% -10%, #1a2036 0%, var(--bg) 55%);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    padding: 40px 20px 20px;
+    text-align: center;
+  }
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  .logo .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 0 12px var(--accent);
+  }
+  header p {
+    color: var(--muted);
+    margin-top: 6px;
+    font-size: 0.95rem;
+  }
+  main {
+    flex: 1;
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 10px 20px 40px;
+  }
+  .search-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    gap: 10px;
+    box-shadow: 0 20px 40px -20px rgba(0,0,0,0.6);
+  }
+  #url-input {
+    flex: 1;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  #url-input:focus { border-color: var(--accent); }
+  #audit-btn {
+    background: linear-gradient(135deg, var(--accent), #4a63d6);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 0 22px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  #audit-btn:hover { opacity: 0.92; }
+  #audit-btn:active { transform: scale(0.97); }
+  #audit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  #status-line {
+    margin-top: 14px;
+    font-size: 0.88rem;
+    color: var(--muted);
+    min-height: 18px;
+  }
+  .spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: -2px;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #error-box {
+    display: none;
+    margin-top: 16px;
+    background: rgba(255,107,107,0.08);
+    border: 1px solid rgba(255,107,107,0.35);
+    color: #ffb3b3;
+    padding: 14px 16px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+  }
+
+  #report {
+    display: none;
+    margin-top: 22px;
+    animation: fadeUp 0.35s ease;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .report-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .status-pill {
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(126,240,192,0.12);
+    color: var(--accent-2);
+    border: 1px solid rgba(126,240,192,0.3);
+  }
+  .status-pill.warn {
+    background: rgba(255,180,84,0.12);
+    color: var(--warn);
+    border-color: rgba(255,180,84,0.3);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .metric {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .metric .label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .metric .value {
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+  .metric.full { grid-column: 1 / -1; }
+  .metric .value.small {
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.4;
+    word-break: break-word;
+  }
+  .metric .value.muted-text { color: var(--muted); font-weight: 500; font-size: 0.9rem; }
+  .metric .value.flag { color: var(--warn); }
+  .metric .value.ok { color: var(--accent-2); }
+
+  footer {
+    text-align: center;
+    padding: 22px 20px;
+    font-size: 0.78rem;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+  }
+  footer a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  footer a:hover { text-decoration: underline; }
+
+  @media (max-width: 420px) {
+    .search-card { flex-direction: column; }
+    #audit-btn { padding: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span class="dot"></span>Page Pulse</div>
+  <p>Audit any URL for performance, SEO, and accessibility basics.</p>
+</header>
+
+<main>
+  <div class="search-card">
+    <input id="url-input" type="text" placeholder="https://example.com" autocomplete="off" />
+    <button id="audit-btn" onclick="runAudit()">Audit</button>
+  </div>
+
+  <div id="status-line"></div>
+
+  <div id="error-box"></div>
+
+  <div id="report">
+    <div class="report-header">
+      <span style="color: var(--muted); font-size: 0.85rem;" id="report-url"></span>
+      <span class="status-pill" id="status-pill"></span>
+    </div>
+    <div class="grid">
+      <div class="metric">
+        <div class="label">Response Time</div>
+        <div class="value" id="m-time">—</div>
+      </div>
+      <div class="metric">
+        <div class="label">Word Count</div>
+        <div class="value" id="m-words">—</div>
+      </div>
+      <div class="metric">
+        <div class="label">H1 Count</div>
+        <div class="value" id="m-h1">—</div>
+      </div>
+      <div class="metric">
+        <div class="label">Images Missing Alt</div>
+        <div class="value" id="m-alt">—</div>
+      </div>
+      <div class="metric full">
+        <div class="label">Page Title</div>
+        <div class="value small" id="m-title">—</div>
+      </div>
+      <div class="metric full">
+        <div class="label">Meta Description</div>
+        <div class="value small muted-text" id="m-desc">—</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Built for <a href="https://digitalheroesco.com" target="_blank" rel="noopener">Digital Heroes Training Task</a>
+</footer>
+
+<script>
+  const input = document.getElementById('url-input');
+  const btn = document.getElementById('audit-btn');
+  const statusLine = document.getElementById('status-line');
+  const errorBox = document.getElementById('error-box');
+  const report = document.getElementById('report');
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') runAudit();
+  });
+
+  async function runAudit() {
+    const url = input.value.trim();
+    errorBox.style.display = 'none';
+    report.style.display = 'none';
+
+    if (!url) {
+      statusLine.textContent = '';
+      errorBox.textContent = 'Please enter a URL first.';
+      errorBox.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    statusLine.innerHTML = '<span class="spinner"></span>Fetching and analyzing…';
+
+    try {
+      const res = await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json();
+      statusLine.textContent = '';
+
+      if (!res.ok) {
+        errorBox.textContent = data.message || 'Something went wrong. Please try a different URL.';
+        errorBox.style.display = 'block';
+        return;
+      }
+
+      renderReport(url, data);
+    } catch (err) {
+      statusLine.textContent = '';
+      errorBox.textContent = 'Network error — could not reach the audit service.';
+      errorBox.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function renderReport(url, data) {
+    document.getElementById('report-url').textContent = url;
+
+    const pill = document.getElementById('status-pill');
+    pill.textContent = `HTTP ${data.http_status}`;
+    pill.className = 'status-pill' + (data.http_status >= 400 ? ' warn' : '');
+
+    document.getElementById('m-time').textContent = `${data.response_time_ms} ms`;
+    document.getElementById('m-words').textContent = data.word_count_approx;
+    document.getElementById('m-h1').textContent = data.h1_count;
+
+    const altEl = document.getElementById('m-alt');
+    altEl.textContent = `${data.images_missing_alt} / ${data.images_total}`;
+    altEl.className = 'value' + (data.images_missing_alt > 0 ? ' flag' : ' ok');
+
+    document.getElementById('m-title').textContent = data.title || '— not found —';
+    document.getElementById('m-desc').textContent = data.meta_description || '— not found —';
+
+    report.style.display = 'block';
+  }
+</script>
+
+</body>
+</html>
