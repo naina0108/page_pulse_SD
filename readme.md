@@ -73,24 +73,25 @@ Every error response includes a human-readable message field for the frontend to
 --- 
 
 # Design Decisions
-1. Parsing logic is a pure function, separate from the route.
+
+**1. Parsing logic is a pure function, separate from the route.**
 
 `build_report(html, status_code, response_time_ms)` takes plain strings/numbers in and returns a plain dict out — it doesn't touch `requests` or Flask at all. This is what makes the test suite possible without mocking half the internet: the parsing tests just hand it raw HTML strings. The network and error-handling concerns live only in the `/api/audit` route.
 
-2. Validate the URL before making any network call.
+**2. Validate the URL before making any network call.**
    
 `is_valid_url()` checks the scheme and netloc up front and returns `400` immediately for garbage input. The alternative — letting `requests` throw and catching that — would work, but it means every malformed string still triggers a real network attempt, which is slower and behaves inconsistently across malformed inputs (some raise, some don't). Failing fast on obviously-bad input is both quicker and more predictable.
 
-3. Distinguish failure types with different HTTP status codes instead of one generic `"error."`
+**3. Distinguish failure types with different HTTP status codes instead of one generic `"error."`**
    
 A timeout `(504)`, a DNS failure `(502)`, and a non-HTML response `(422)` are different problems with different likely fixes for the person hitting the API. Collapsing them into a single `400/500` would satisfy "never crash" but would make the API harder to build against — a frontend (or another API consumer) can't tell "try again later" apart from "that URL will never work" without the distinct codes.
 
 ---
 # Tech Stack
 
-- Backend: Flask + requests + BeautifulSoup4
-- Frontend: Vanilla HTML/CSS/JS (no build step, no framework)
-- Tests: Python's built-in unittest, with unittest.mock for network isolation
-- Deploy target: Render (free tier)
+- **Backend:** Flask + requests + BeautifulSoup4
+- **Frontend:** Vanilla HTML/CSS/JS (no build step, no framework)
+- **Tests:** Python's built-in unittest, with unittest.mock for network isolation
+- **Deploy target:** Render (free tier)
 
 
